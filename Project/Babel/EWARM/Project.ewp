@@ -986,6 +986,9 @@
   </group>
   <group>
     <name>FreeRTOS</name>
+    <excluded>
+      <configuration>STM32373C-EVAL</configuration>
+    </excluded>
     <group>
       <name>port</name>
       <file>
@@ -1114,6 +1117,9 @@
     <name>User</name>
     <file>
       <name>$PROJ_DIR$\..\FreeRTOSConfig.h</name>
+      <excluded>
+        <configuration>STM32373C-EVAL</configuration>
+      </excluded>
     </file>
     <file>
       <name>$PROJ_DIR$\..\main.c</name>

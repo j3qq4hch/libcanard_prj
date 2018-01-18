@@ -1,0 +1,16 @@
+
+*.srec
+*.map
+*.o
+*.pbd
+*.browse
+*.cout
+*.pbi
+*.wspos
+*.wsdt
+*.dbgdt
+*.dep
+*.ewp
+*.dep
+*.dep
+*.ewp

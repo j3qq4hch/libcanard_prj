@@ -100,39 +100,32 @@ static bool shouldAcceptTransfer(const CanardInstance* ins,
 /////////////////////////////////////////////////////////////////////////////////
 
 
-
 int main(void)
 { 
   RCC_GetClocksFreq(&RCC_Clocks);
-  SysTick_Config(RCC_Clocks.HCLK_Frequency / 1000);
- 
   hw_init();
-  
-  res = canardSTM32ComputeCANTimings(RCC_Clocks.PCLK1_Frequency, 1000000, &timings); 
-  
-  do 
-  {
-    res = canardSTM32Init(&timings, CanardSTM32IfaceModeNormal);
-  } while(res < 0);
-  
-  
+
+  res = canardSTM32ComputeCANTimings(RCC_Clocks.PCLK1_Frequency, 1000000, &timings);
+  res = canardSTM32Init(&timings, CanardSTM32IfaceModeNormal);
+
   canardInit(&canard,                           //< Uninitialized library instance
              canard_memory_pool,                ///< Raw memory chunk used for dynamic allocation
              sizeof(canard_memory_pool),        //< Size of the above, in bytes
              onTransferReceived,                //< Callback, see CanardOnTransferReception
              shouldAcceptTransfer,              //< Callback, see CanardShouldAcceptTransfer
              NULL); 
-   
-  
   canardSetLocalNodeID(&canard, 100);
+ 
   u32 timestamp = 0xAAAABBBB;
   uint8_t buffer[UAVCAN_NODE_STATUS_MESSAGE_SIZE];
   static uint8_t transfer_id;
   
   while(1)
   {
-    for(u16 i = 0; i < 0xFFFF; i++){}
-   
+    for(u32 i = 0; i < 0x5FFFF; i++){}
+    
+   gpio_toggle(LED_GPIO_PORT, LED1_PIN);
+   gpio_toggle(LED_GPIO_PORT, LED2_PIN);
    
     canardEncodeScalar(buffer,  0, 32, &timestamp);
     canardEncodeScalar(buffer, 32,  2, &node_health);
@@ -144,26 +137,31 @@ int main(void)
   }
 }
 
+/////////////////////////////////////////////////////////////////
 
-  
-  
 void hw_init(void)
 {
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_GPIOE, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
  
   GPIO_InitTypeDef GPIO_InitStructure;
-  /* Connect CAN pins to AF7 */
   
   GPIO_PinAFConfig(CAN_GPIO_PORT, CAN_RX_SOURCE, CAN_AF_PORT);
   GPIO_PinAFConfig(CAN_GPIO_PORT, CAN_TX_SOURCE, CAN_AF_PORT); 
-  
-  /* Configure CAN RX and TX pins */
+
   GPIO_InitStructure.GPIO_Pin = CAN_RX_PIN | CAN_TX_PIN;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
   GPIO_Init(CAN_GPIO_PORT, &GPIO_InitStructure);
+
+  
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_OD; // GPIO_OType_PP 
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Pin = LED1_PIN | LED2_PIN;
+  GPIO_Init(LED_GPIO_PORT, &GPIO_InitStructure);
 }
 

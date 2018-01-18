@@ -135,7 +135,7 @@ static bool waitMSRINAKBitStateChange(volatile const CanardSTM32CANType* const b
             return true;
         }
         
-        for(uint16_t i= 0; i< 0xFFFF;i++){}
+        for(uint16_t i= 0; i< 0xFFF0;i++){}
 
         // Sleep 1 millisecond
       //  usleep(1000);           // TODO: This function may be missing on some platforms

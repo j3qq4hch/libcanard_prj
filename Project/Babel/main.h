@@ -29,9 +29,21 @@
 #define CAN_RX_PIN                 GPIO_Pin_8
 #define CAN_TX_PIN                 GPIO_Pin_9
 #define CAN_GPIO_PORT              GPIOB
-#define CAN_AF_PORT                GPIO_AF_7
+#define CAN_AF_PORT                GPIO_AF_9
 #define CAN_RX_SOURCE              GPIO_PinSource8
 #define CAN_TX_SOURCE              GPIO_PinSource9
 
+#define LED1_PIN                   GPIO_Pin_8
+#define LED2_PIN                   GPIO_Pin_9
+#define LED_GPIO_PORT              GPIOE
+
+
+
 void hw_init(void);
+
+static inline void gpio_toggle(GPIO_TypeDef * port, uint16_t pin)
+{
+  if(port->ODR & pin) {port->BRR |= pin;}
+  else {port->BSRR |= pin;}
+}
 #endif 
