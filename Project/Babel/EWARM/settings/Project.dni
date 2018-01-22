@@ -13,7 +13,7 @@ CStepIntDis=_ 0
 stlinkserialNo=CF09214A
 stlinkfoundProbes=
 [DebugChecksum]
-Checksum=-290289056
+Checksum=-138637720
 [CodeCoverage]
 Enabled=_ 0
 [Exceptions]
@@ -56,8 +56,14 @@ ITMportsLogFile=0
 ITMlogFile=$PROJ_DIR$\ITM.log
 [InterruptStripe]
 Sort=1
+[struct_types]
+Fmt0=CanardCANFrame-id	4	0
+[array_types]
+Fmt0=uint8_t[8]	4	0
 [watch_formats]
 Fmt0={W}1:StartUpCounter	4	0
+Fmt1={W}1:frame->id	4	0
+Fmt2={W}1:source_node_id	3	0
 [Trace2]
 Enabled=0
 ShowSource=0
@@ -101,12 +107,17 @@ SumSortOrder=0
 [Disassemble mode]
 mode=0
 [Breakpoints2]
-Bp0=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\main.c}.74.13" 0 0 1 "" 0 "" 0
-Count=1
+Bp0=_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\main.c}.148.5" 0 0 1 "" 0 "" 0
+Bp1=_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\main.c}.83.3" 0 0 1 "" 0 "" 0
+Bp2=_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\main.c}.40.3" 0 0 1 "" 0 "" 0
+Count=3
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
 Category=_ 0
+[TermIOLog]
+LoggingEnabled=_ 0
+LogFile=_ ""
 [Aliases]
 Count=0
 SuppressDialog=0
@@ -120,6 +131,3 @@ Exclusions=
 Enabled=0
 [CallStackStripe]
 ShowTiming=1
-[TermIOLog]
-LoggingEnabled=_ 0
-LogFile=_ ""

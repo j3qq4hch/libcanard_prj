@@ -986,9 +986,6 @@
   </group>
   <group>
     <name>FreeRTOS</name>
-    <excluded>
-      <configuration>STM32373C-EVAL</configuration>
-    </excluded>
     <group>
       <name>port</name>
       <file>
@@ -1116,10 +1113,13 @@
   <group>
     <name>User</name>
     <file>
+      <name>$PROJ_DIR$\..\canard_threads.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\canard_threads.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\FreeRTOSConfig.h</name>
-      <excluded>
-        <configuration>STM32373C-EVAL</configuration>
-      </excluded>
     </file>
     <file>
       <name>$PROJ_DIR$\..\main.c</name>
@@ -1131,6 +1131,12 @@
       <name>$PROJ_DIR$\..\stm32f37x_it.c</name>
     </file>
   </group>
+  <file>
+    <name>$PROJ_DIR$\..\timer_thread.c</name>
+  </file>
+  <file>
+    <name>$PROJ_DIR$\..\timer_thread.h</name>
+  </file>
 </project>
 
 

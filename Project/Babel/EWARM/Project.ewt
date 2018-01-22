@@ -1195,6 +1195,12 @@
   <group>
     <name>User</name>
     <file>
+      <name>$PROJ_DIR$\..\canard_threads.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\canard_threads.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\FreeRTOSConfig.h</name>
     </file>
     <file>
@@ -1207,6 +1213,12 @@
       <name>$PROJ_DIR$\..\stm32f37x_it.c</name>
     </file>
   </group>
+  <file>
+    <name>$PROJ_DIR$\..\timer_thread.c</name>
+  </file>
+  <file>
+    <name>$PROJ_DIR$\..\timer_thread.h</name>
+  </file>
 </project>
 
 

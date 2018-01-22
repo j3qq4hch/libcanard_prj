@@ -3,78 +3,64 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "misc.h"
-#include "canard.h"
-#include "canard_stm32.h"
 #include "main.h"
 #include <stdio.h>
-
-void readUniqueID(uint8_t* out_uid);
-void makeNodeStatusMessage(uint8_t buffer[UAVCAN_NODE_STATUS_MESSAGE_SIZE]);
+#include "canard.h"
+#include "canard_stm32.h"
+#include "timer_thread.h"
+#include "canard_threads.h"
 
 RCC_ClocksTypeDef RCC_Clocks;
 CanardSTM32CANTimings timings;
-static CanardInstance canard;                       ///< The library instance
-static uint8_t canard_memory_pool[1024];            ///< Arena for memory allocation, used by the library
-
-static uint8_t node_health = UAVCAN_NODE_HEALTH_OK;
-static uint8_t node_mode   = UAVCAN_NODE_MODE_INITIALIZATION;
+CanardInstance canard;                       //< The library instance
+static uint8_t canard_memory_pool[1024];     //< Arena for memory allocation, used by the library
 
 int res = 0;
+
+led_blinker_param blink1_param = 
+{
+GPIO_Pin_8,
+GPIOE,
+800
+};
+
+timer_thread_p timer1 = {TIM12, 1, TIMER_MODE_OUTPUT};
+timer_thread_p timer2 = {TIM12, 2, TIMER_MODE_OUTPUT};
+timer_thread_p timer3 = {TIM3,  1, TIMER_MODE_OUTPUT};
+timer_thread_p timer4 = {TIM3,  2, TIMER_MODE_OUTPUT};
+timer_thread_p timer5 = {TIM3,  3, TIMER_MODE_OUTPUT};
+timer_thread_p timer6 = {TIM3,  4, TIMER_MODE_OUTPUT};
+
 /////////////////////////////////////////////////////////////////////////////////
 
 static void onTransferReceived(CanardInstance* ins,
                                CanardRxTransfer* transfer)
 {
 
-  if ((transfer->transfer_type == CanardTransferTypeRequest) &&
-        (transfer->data_type_id == UAVCAN_GET_NODE_INFO_DATA_TYPE_ID))
-    {
-        //printf("GetNodeInfo request from %d\n", transfer->source_node_id);
-
-        uint8_t buffer[UAVCAN_GET_NODE_INFO_RESPONSE_MAX_SIZE];
-        memset(buffer, 0, UAVCAN_GET_NODE_INFO_RESPONSE_MAX_SIZE);
-
-        // NodeStatus
-        //makeNodeStatusMessage(buffer);
-
-        // SoftwareVersion
-        buffer[7] = APP_VERSION_MAJOR;
-        buffer[8] = APP_VERSION_MINOR;
-        buffer[9] = 1;                          // Optional field flags, VCS commit is set
-        uint32_t uu32 = 0xDEADBEEF; //GIT_HASH;
-        canardEncodeScalar(buffer, 80, 32, &uu32);
-        // Image CRC skipped
-
-        // HardwareVersion
-        // Major skipped
-        // Minor skipped
-        //readUniqueID(&buffer[24]);
-        // Certificate of authenticity skipped
-
-        // Name
-        const size_t name_len = strlen(APP_NODE_NAME);
-        memcpy(&buffer[41], APP_NODE_NAME, name_len);
-
-        const size_t total_size = 41 + name_len;
-
-        /*
-         * Transmitting; in this case we don't have to release the payload because it's empty anyway.
-         */
-        const int resp_res = canardRequestOrRespond(ins,
-                                                    transfer->source_node_id,
-                                                    UAVCAN_GET_NODE_INFO_DATA_TYPE_SIGNATURE,
-                                                    UAVCAN_GET_NODE_INFO_DATA_TYPE_ID,
-                                                    &transfer->transfer_id,
-                                                    transfer->priority,
-                                                    CanardResponse,
-                                                    &buffer[0],
-                                                    (uint16_t)total_size);
-        if (resp_res <= 0)
-        {
-            (void)fprintf(stderr, "Could not respond to GetNodeInfo; error %d\n", resp_res);
-        }
-    }
-  
+//  if ((transfer->transfer_type == CanardTransferTypeRequest) &&
+//        (transfer->data_type_id == UAVCAN_GET_NODE_INFO_DATA_TYPE_ID))
+//    {
+//        uint8_t buffer[UAVCAN_GET_NODE_INFO_RESPONSE_MAX_SIZE];
+//        memset(buffer, 0, UAVCAN_GET_NODE_INFO_RESPONSE_MAX_SIZE);
+//        const size_t name_len = strlen(APP_NODE_NAME);
+//        memcpy(&buffer[41], APP_NODE_NAME, name_len);
+//       const size_t total_size = 41 + name_len;
+//
+//        const int resp_res = canardRequestOrRespond(ins,
+//                                                    transfer->source_node_id,
+//                                                    UAVCAN_GET_NODE_INFO_DATA_TYPE_SIGNATURE,
+//                                                    UAVCAN_GET_NODE_INFO_DATA_TYPE_ID,
+//                                                    &transfer->transfer_id,
+//                                                    transfer->priority,
+//                                                    CanardResponse,
+//                                                    &buffer[0],
+//                                                    (uint16_t)total_size);
+//        if (resp_res <= 0)
+//        {
+//            (void)fprintf(stderr, "Could not respond to GetNodeInfo; error %d\n", resp_res);
+//        }
+//    }
+//  
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -106,62 +92,55 @@ int main(void)
   hw_init();
 
   res = canardSTM32ComputeCANTimings(RCC_Clocks.PCLK1_Frequency, 1000000, &timings);
+  if(res)
+  {
+  __ASM volatile("BKPT #01"); 
+  }
   res = canardSTM32Init(&timings, CanardSTM32IfaceModeNormal);
-
+  if(res)
+  {
+  __ASM volatile("BKPT #01"); 
+  }
+  
   canardInit(&canard,                           //< Uninitialized library instance
              canard_memory_pool,                ///< Raw memory chunk used for dynamic allocation
              sizeof(canard_memory_pool),        //< Size of the above, in bytes
              onTransferReceived,                //< Callback, see CanardOnTransferReception
              shouldAcceptTransfer,              //< Callback, see CanardShouldAcceptTransfer
              NULL); 
+  
   canardSetLocalNodeID(&canard, 100);
  
-  u32 timestamp = 0xAAAABBBB;
-  uint8_t buffer[UAVCAN_NODE_STATUS_MESSAGE_SIZE];
-  static uint8_t transfer_id;
+  xTaskCreate( led_blinker,                     /* Function that implements the task. */
+              "blink1",                         /* Text name for the task. */
+              configMINIMAL_STACK_SIZE,         /* Stack size in words, not bytes. */
+              &blink1_param ,                   /* Parameter passed into the task. */
+              tskIDLE_PRIORITY+1,               /* Priority at which the task is created. */
+              NULL);
   
-  while(1)
-  {
-    for(u32 i = 0; i < 0x5FFFF; i++){}
-    
-   gpio_toggle(LED_GPIO_PORT, LED1_PIN);
-   gpio_toggle(LED_GPIO_PORT, LED2_PIN);
+  xTaskCreate( canard_status_sender,            /* Function that implements the task. */
+              "can_stat",                       /* Text name for the task. */
+              configMINIMAL_STACK_SIZE * 2,     /* Stack size in words, not bytes. */
+              NULL,                             /* Parameter passed into the task. */
+              tskIDLE_PRIORITY+1,               /* Priority at which the task is created. */
+              NULL);
+ 
+   xTaskCreate( canard_rx,            /* Function that implements the task. */
+              "can_rx",                       /* Text name for the task. */
+              configMINIMAL_STACK_SIZE * 2,     /* Stack size in words, not bytes. */
+              NULL,                             /* Parameter passed into the task. */
+              tskIDLE_PRIORITY+1,               /* Priority at which the task is created. */
+              NULL);
    
-    canardEncodeScalar(buffer,  0, 32, &timestamp);
-    canardEncodeScalar(buffer, 32,  2, &node_health);
-    canardEncodeScalar(buffer, 34,  3, &node_mode);
+    xTaskCreate(canard_tx,            /* Function that implements the task. */
+              "can_tx",                       /* Text name for the task. */
+              configMINIMAL_STACK_SIZE * 2,     /* Stack size in words, not bytes. */
+              NULL,                             /* Parameter passed into the task. */
+              tskIDLE_PRIORITY+1,               /* Priority at which the task is created. */
+              NULL);
     
-     int bc_res = canardBroadcast(&canard, UAVCAN_NODE_STATUS_DATA_TYPE_SIGNATURE,
-                                           UAVCAN_NODE_STATUS_DATA_TYPE_ID, &transfer_id, CANARD_TRANSFER_PRIORITY_LOW,
-                                           buffer, UAVCAN_NODE_STATUS_MESSAGE_SIZE);
-  }
+  SysTick_Config(SystemCoreClock / 1000);
+  vTaskStartScheduler();
 }
 
 /////////////////////////////////////////////////////////////////
-
-void hw_init(void)
-{
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_GPIOE, ENABLE);
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
- 
-  GPIO_InitTypeDef GPIO_InitStructure;
-  
-  GPIO_PinAFConfig(CAN_GPIO_PORT, CAN_RX_SOURCE, CAN_AF_PORT);
-  GPIO_PinAFConfig(CAN_GPIO_PORT, CAN_TX_SOURCE, CAN_AF_PORT); 
-
-  GPIO_InitStructure.GPIO_Pin = CAN_RX_PIN | CAN_TX_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
-  GPIO_Init(CAN_GPIO_PORT, &GPIO_InitStructure);
-
-  
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_OD; // GPIO_OType_PP 
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_InitStructure.GPIO_Pin = LED1_PIN | LED2_PIN;
-  GPIO_Init(LED_GPIO_PORT, &GPIO_InitStructure);
-}
-
